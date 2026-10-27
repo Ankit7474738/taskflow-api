@@ -17,11 +17,16 @@ def create_task(payload: TaskCreate) -> TaskResponse:
 def list_tasks(
     status_filter: TaskStatus | None = Query(default=None, alias="status"),
     priority: TaskPriority | None = None,
+    overdue_only: bool = Query(default=False, alias="overdue_only"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
 ) -> TaskListResponse:
     items, total = task_service.list_tasks(
-        status=status_filter, priority=priority, page=page, page_size=page_size
+        status=status_filter,
+        priority=priority,
+        overdue_only=overdue_only,
+        page=page,
+        page_size=page_size,
     )
     return TaskListResponse(items=items, total=total, page=page, page_size=page_size)
 

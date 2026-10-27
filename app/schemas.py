@@ -1,6 +1,7 @@
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field
 from app.models import TaskPriority, TaskStatus
+from typing import Optional
 
 
 class TaskCreate(BaseModel):
@@ -8,6 +9,7 @@ class TaskCreate(BaseModel):
     description: str = Field(default="", max_length=2000)
     status: TaskStatus = TaskStatus.TODO
     priority: TaskPriority = TaskPriority.MEDIUM
+    due_date: Optional[datetime] = Field(default=None)
 
 
 class TaskUpdate(BaseModel):
@@ -15,6 +17,7 @@ class TaskUpdate(BaseModel):
     description: str | None = Field(default=None, max_length=2000)
     status: TaskStatus | None = None
     priority: TaskPriority | None = None
+    due_date: Optional[datetime] = Field(default=None)
 
 
 class TaskResponse(BaseModel):
@@ -26,6 +29,7 @@ class TaskResponse(BaseModel):
     priority: TaskPriority
     created_at: datetime
     updated_at: datetime
+    due_date: Optional[datetime] = None
 
 
 class TaskListResponse(BaseModel):

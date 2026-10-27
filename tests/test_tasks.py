@@ -2,6 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 from app.main import app
 from app.repository import repository
+from datetime import datetime, timezone, timedelta
 
 client = TestClient(app)
 
@@ -83,3 +84,36 @@ def test_invalid_status_is_rejected():
 
 def test_empty_title_is_rejected():
     assert client.post("/tasks", json={"title": ""}).status_code == 422
+
+
+def test_create_task_with_due_date():
+    due = datetime.now(timezone.utc).isoformat()
+    response = client.post("/tasks", json={"title": "Task with due", "due_date": due})
+    assert response.status_code == 201
+    data = response.json()
+    assert data["due_date"] is not None
+    # Ensure the returned due_date matches the input (allow slight formatting differences)
+    assert datetime.fromisoformat(data["due_date"]).isoformat() == datetime.fromisoformat(due).isoformat()
+
+
+def test_create_task_invalid_due_date():
+    response = client.post("/tasks", json={"title": "Bad due", "due_date": "not-a-date"})
+    assert response.status_code == 422
+
+
+def test_list_overdue_tasks():
+    now = datetime.now(timezone.utc)
+    past = (now - timedelta(days=1)).isoformat()
+    future = (now + timedelta(days=1)).isoformat()
+    # Overdue task (todo)
+    client.post("/tasks", json={"title": "Overdue", "status": "todo", "due_date": past})
+    # Future task (todo)
+    client.post("/tasks", json={"title": "Future", "status": "todo", "due_date": future})
+    # Done task with past due date
+    client.post("/tasks", json={"title": "DonePast", "status": "done", "due_date": past})
+    # Get overdue only
+    resp = client.get("/tasks?overdue_only=true")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["total"] == 1
+    assert body["items"][0]["title"] == "Overdue"
