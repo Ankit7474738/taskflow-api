@@ -8,6 +8,7 @@ class TaskCreate(BaseModel):
     description: str = Field(default="", max_length=2000)
     status: TaskStatus = TaskStatus.TODO
     priority: TaskPriority = TaskPriority.MEDIUM
+    due_date: datetime | None = None
 
 
 class TaskUpdate(BaseModel):
@@ -15,6 +16,7 @@ class TaskUpdate(BaseModel):
     description: str | None = Field(default=None, max_length=2000)
     status: TaskStatus | None = None
     priority: TaskPriority | None = None
+    due_date: datetime | None = None
 
 
 class TaskResponse(BaseModel):
@@ -24,6 +26,7 @@ class TaskResponse(BaseModel):
     description: str
     status: TaskStatus
     priority: TaskPriority
+    due_date: datetime | None = None
     created_at: datetime
     updated_at: datetime
 

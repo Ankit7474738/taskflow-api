@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from app.models import Task
 from app.repository import TaskRepository
 from app.schemas import TaskCreate, TaskUpdate
@@ -18,6 +20,7 @@ class TaskService:
             description=data.description,
             status=data.status,
             priority=data.priority,
+            due_date=data.due_date,
         )
         return self.repository.add(task)
 
@@ -31,6 +34,7 @@ class TaskService:
         self,
         status: TaskStatus | None = None,
         priority: TaskPriority | None = None,
+        overdue_only: bool = False,
         page: int = 1,
         page_size: int = 20,
     ) -> tuple[list[Task], int]:
@@ -39,6 +43,17 @@ class TaskService:
             tasks = [task for task in tasks if task.status == status]
         if priority is not None:
             tasks = [task for task in tasks if task.priority == priority]
+        if overdue_only:
+            now = datetime.now(timezone.utc)
+            tasks = [
+                task
+                for task in tasks
+                if task.due_date is not None
+                and task.status != TaskStatus.DONE
+                and (
+                    task.due_date if task.due_date.tzinfo is not None else task.due_date.replace(tzinfo=timezone.utc)
+                ) < now
+            ]
         tasks.sort(key=lambda task: task.created_at, reverse=True)
         total = len(tasks)
         start = (page - 1) * page_size
