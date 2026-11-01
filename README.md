@@ -4,6 +4,7 @@ A compact Python/FastAPI task-management API designed for testing repository-ana
 
 ## Features
 - Create, list, retrieve, update, and delete tasks
+- Due dates (ISO-8601 UTC format) and overdue task filtering
 - Filter by status and priority
 - Pagination with total count
 - In-memory storage (data resets on restart)
@@ -28,6 +29,11 @@ pytest -q
 ## Example
 ```powershell
 curl "http://127.0.0.1:8000/tasks?status=todo&priority=high&page=1&page_size=10"
+```
+
+Filter overdue tasks (tasks with an ISO-8601 UTC `due_date` before current time and status not `done`):
+```powershell
+curl "http://127.0.0.1:8000/tasks?overdue_only=true"
 ```
 
 ## Structure

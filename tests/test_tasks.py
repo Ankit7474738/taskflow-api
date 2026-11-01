@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta, timezone
 import pytest
 from fastapi.testclient import TestClient
 from app.main import app
@@ -13,10 +14,16 @@ def clear_tasks():
     repository.clear()
 
 
-def create_task(title: str, status: str = "todo", priority: str = "medium") -> dict:
-    response = client.post("/tasks", json={
-        "title": title, "status": status, "priority": priority
-    })
+def create_task(
+    title: str,
+    status: str = "todo",
+    priority: str = "medium",
+    due_date: str | None = None,
+) -> dict:
+    payload = {"title": title, "status": status, "priority": priority}
+    if due_date is not None:
+        payload["due_date"] = due_date
+    response = client.post("/tasks", json=payload)
     assert response.status_code == 201
     return response.json()
 
@@ -83,3 +90,48 @@ def test_invalid_status_is_rejected():
 
 def test_empty_title_is_rejected():
     assert client.post("/tasks", json={"title": ""}).status_code == 422
+
+
+def test_invalid_due_date_rejected():
+    response = client.post("/tasks", json={"title": "Invalid date task", "due_date": "not-a-date"})
+    assert response.status_code == 422
+
+
+def test_list_tasks_overdue_filter():
+    past = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
+    future = (datetime.now(timezone.utc) + timedelta(days=1)).isoformat()
+
+    create_task("Past due incomplete", status="todo", due_date=past)
+    create_task("Past due completed", status="done", due_date=past)
+    create_task("Future due", status="todo", due_date=future)
+    create_task("No due date", status="todo")
+
+    response = client.get("/tasks?overdue_only=true")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 1
+    assert len(body["items"]) == 1
+    assert body["items"][0]["title"] == "Past due incomplete"
+
+
+def test_list_tasks_overdue_filter_combined_with_pagination():
+    past = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
+
+    create_task("High overdue 1", priority="high", due_date=past)
+    create_task("High overdue 2", priority="high", due_date=past)
+    create_task("Low overdue", priority="low", due_date=past)
+    create_task("High not overdue", priority="high")
+
+    response = client.get("/tasks?overdue_only=true&priority=high&page=1&page_size=1")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 2
+    assert len(body["items"]) == 1
+    assert body["items"][0]["priority"] == "high"
+
+    response_p2 = client.get("/tasks?overdue_only=true&priority=high&page=2&page_size=1")
+    assert response_p2.status_code == 200
+    body_p2 = response_p2.json()
+    assert body_p2["total"] == 2
+    assert len(body_p2["items"]) == 1
+    assert body_p2["page"] == 2
